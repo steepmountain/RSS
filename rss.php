@@ -1,55 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Page Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" media="screen" href="main.css" />
+    <script src="main.js"></script>
+</head>
+<body>
 <?php
 
-function fetch($url)
-{
-    $rss = new SimpleXmlElement(file_get_contents($url));
-    foreach ($rss->channel->item as $article) {
-        $title = $article->title;
-        $link = $article->guid; //GUID for permalink
+$rss = new SimpleXmlElement(file_get_contents("http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"));
+$feed = array();
+foreach ($rss->channel->item as $article) {
 
-        if ($article->children('media', true)->content) {
-            $imageAttributes = $article->children('media', true)->content->attributes();
-            $imageUrl = $imageAttributes && $imageAttributes->medium == 'image'
-                ? $imageAttributes->url 
-                : '';
+    $title = (string) $article->title;
+    $link = (string) $article->guid; //GUID for permalink
+
+    // check if item has media:content node before trying to access its attributes
+    $imageUrl = '';
+    if ($article->children('media', true)->content) {
+        $imageAttributes = $article->children('media', true)->content->attributes();
+        if ($imageAttributes && $imageAttributes->medium == 'image') {
+            $imageUrl = (string) $imageAttributes->url;
         }
-
-        $imageDescription = $article->children('media', true)->description;
-        $imageCredit = $article->children('media', true)->credit;
-        $description = $article->description;
-        $author = $article->children('dc', true);
-        $publishDate = strtotime($article->pubDate);
-        $categories = array();
-
-        foreach ($article->category as $category) {
-            $categories[] = $category;
-        }
-
-        echo '<div style="border: 1px solid black">';
-        if ($imageUrl != '') {
-            echo "
-                    <img src='$imageUrl' />
-                    <sub>Credit: $imageCredit</sub>
-                    <p>$imageDescription</p>";
-        }
-
-        echo "<div>
-                <a href='$link'>$title</a>
-                <p>$description</p>
-                <p>Author: $author</p>
-                <p>Published: $publishDate</p>";
-
-        echo "Categories: <ul>";
-        foreach ($article->category as $category) {
-            echo "<li>$category</li>";
-            echo $category['domain'];
-            //$categories[] = $category;
-        }
-        echo "</ul>";
-
-        echo '</div>';
-    
     }
+
+    $imageDescription = (string) $article->children('media', true)->description;
+    $imageCredit = (string) $article->children('media', true)->credit;
+    $description = (string) $article->description;
+    $author = (string) $article->children('dc', true);
+    $publishDate = strtotime($article->pubDate);
+    $categories = array();
+
+    foreach ($article->category as $category) {
+        $categories[] = (string) $category;
+    }
+
+    $item = (object) [
+        'title' => $title,
+        'link' => $link,
+        'imageUrl' => $imageUrl,
+        'imageDescription' => $imageDescription,
+        'imageCredit' => $imageCredit,
+        'description' => $description,
+        'author' => $author,
+        'publishDate' => $publishDate,
+        'categories' => $categories,
+    ];
+
+    $feed[] = $item;
 }
 
-fetch("http://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml");
+echo '<pre>';
+echo var_dump($feed);
+echo '</pre>';
+
+?>
+</body>
+</html>
